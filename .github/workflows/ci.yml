@@ -109,14 +109,17 @@ jobs:
       - name: Build
         if: steps.workspace.outputs.exists == 'true'
         run: pnpm build
-      - name: Runtime smoke test (API, PostgreSQL, Redis, Worker)
+      - name: Install Playwright Chromium
+        if: steps.workspace.outputs.exists == 'true'
+        run: pnpm --filter @control/worker exec playwright install chromium --with-deps
+      - name: Runtime end-to-end smoke test (API, PostgreSQL, Redis, Worker, browser audit)
         if: steps.workspace.outputs.exists == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          node apps/api/dist/main.js > /tmp/control-api.log 2>&1 &
+          (cd apps/api && node dist/main.js) > /tmp/control-api.log 2>&1 &
           API_PID=$!
-          node apps/worker/dist/main.js > /tmp/control-worker.log 2>&1 &
+          (cd apps/worker && node dist/main.js) > /tmp/control-worker.log 2>&1 &
           WORKER_PID=$!
           cleanup() {
             kill "$API_PID" "$WORKER_PID" 2>/dev/null || true
@@ -133,7 +136,46 @@ jobs:
             sleep 2
           done
           curl --fail --silent http://127.0.0.1:4000/api/health
-          curl --fail --silent http://127.0.0.1:4000/api/projects > /tmp/control-projects.json
-          node -e "const x=require('/tmp/control-projects.json'); if (!Array.isArray(x)) process.exit(1)"
+          node <<'NODE'
+          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+          async function request(path, options) {
+            const response = await fetch('http://127.0.0.1:4000/api' + path, options);
+            const body = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(path + ' returned HTTP ' + response.status + ': ' + JSON.stringify(body));
+            return body;
+          }
+          (async () => {
+            const project = await request('/projects', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ name: 'CI browser audit', url: 'https://example.com' })
+            });
+            const started = await request('/projects/' + project.id + '/audits', { method: 'POST' });
+            let audit;
+            for (let attempt = 0; attempt < 90; attempt++) {
+              await sleep(2000);
+              audit = await request('/audits/' + started.auditId);
+              if (['PASSED', 'WARNING', 'FAILED'].includes(audit.status)) break;
+            }
+            if (!audit || !['PASSED', 'WARNING', 'FAILED'].includes(audit.status)) {
+              throw new Error('Audit did not reach a terminal status within 180 seconds');
+            }
+            if (!Array.isArray(audit.checks) || audit.checks.length === 0) {
+              throw new Error('Audit completed without persisted check results');
+            }
+            const artifacts = await request('/audits/' + started.auditId + '/artifacts');
+            if (!Array.isArray(artifacts)) throw new Error('Artifact endpoint did not return an array');
+            console.log(JSON.stringify({
+              projectId: project.id,
+              auditId: started.auditId,
+              auditStatus: audit.status,
+              checks: audit.checks.length,
+              artifacts: artifacts.map(item => item.name)
+            }, null, 2));
+          })().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE
           kill -0 "$WORKER_PID"
-          echo "API health, database-backed projects endpoint and Worker process are responding."
+          echo "A real browser audit was queued, processed by Worker, and persisted through PostgreSQL."
