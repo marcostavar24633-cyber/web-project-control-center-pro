@@ -3,8 +3,19 @@ name: CI
 on:
   push:
     branches: [main, v2-foundation]
+    paths:
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'package.json'
+      - 'pnpm-workspace.yaml'
+      - 'apps/**'
+      - 'packages/**'
   workflow_dispatch:
 
 permissions:
