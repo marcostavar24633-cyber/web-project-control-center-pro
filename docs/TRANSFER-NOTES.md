@@ -41,3 +41,11 @@ The script clones the existing `v2-foundation` branch, copies application source
 ## CI
 
 The GitHub Actions workflow installs pnpm 10, installs dependencies, generates Prisma Client, then runs typecheck and build. It skips validation until the workspace root files are present. A successful CI run is still pending.
+
+## Verification attempt — 2026-11-15
+
+A local TypeScript check was attempted with the globally available compiler, but the workspace dependencies are not installed. The reported diagnostics include unresolved packages and missing generated Prisma Client types; these results are therefore inconclusive and are not represented as a successful typecheck.
+
+Corepack was then used to request pnpm 10.0.0, but package-manager download failed because the environment could not resolve `registry.npmjs.org` (`EAI_AGAIN`). Consequently, dependency installation and the full build could not be run in this environment.
+
+The source archive itself passed ZIP integrity validation. This confirms archive integrity only, not application correctness.
