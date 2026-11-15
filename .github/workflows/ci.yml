@@ -61,8 +61,18 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql://control:control_dev_password@localhost:5432/control_center?schema=public
+      REDIS_URL: redis://localhost:6379
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,3 +109,31 @@ jobs:
       - name: Build
         if: steps.workspace.outputs.exists == 'true'
         run: pnpm build
+      - name: Runtime smoke test (API, PostgreSQL, Redis, Worker)
+        if: steps.workspace.outputs.exists == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node apps/api/dist/main.js > /tmp/control-api.log 2>&1 &
+          API_PID=$!
+          node apps/worker/dist/main.js > /tmp/control-worker.log 2>&1 &
+          WORKER_PID=$!
+          cleanup() {
+            kill "$API_PID" "$WORKER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:4000/api/health >/tmp/control-health.json; then
+              break
+            fi
+            if ! kill -0 "$API_PID" 2>/dev/null; then
+              cat /tmp/control-api.log
+              exit 1
+            fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:4000/api/health
+          curl --fail --silent http://127.0.0.1:4000/api/projects > /tmp/control-projects.json
+          node -e "const x=require('/tmp/control-projects.json'); if (!Array.isArray(x)) process.exit(1)"
+          kill -0 "$WORKER_PID"
+          echo "API health, database-backed projects endpoint and Worker process are responding."
