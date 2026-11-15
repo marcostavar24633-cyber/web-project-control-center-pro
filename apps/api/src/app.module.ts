@@ -11,9 +11,10 @@ import { AuditQueueService } from "./audit-queue.service";
 import { ReportsController } from "./reports.controller";
 import { MonitoringController } from "./monitoring.controller";
 import { MonitoringService } from "./monitoring.service";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
-  imports: [ScheduleModule.forRoot(), ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }])],
+  imports: [ScheduleModule.forRoot(), ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), AuthModule],
   controllers: [HealthController, ProjectsController, AuditsController, ReportsController, MonitoringController],
   providers: [ProjectsService, PrismaService, AuditQueueService, MonitoringService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
