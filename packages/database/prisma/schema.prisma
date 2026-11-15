@@ -37,6 +37,54 @@ enum Severity {
   NONE
 }
 
+enum UserRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  passwordHash String
+  displayName  String?
+  role         UserRole        @default(OWNER)
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  memberships  ProjectMember[]
+  auditLogs    AuditLog[]
+  @@index([isActive])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  role      UserRole @default(OPERATOR)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([userId, projectId])
+  @@index([projectId, role])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  resource   String
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([actorId, createdAt])
+  @@index([resource, resourceId, createdAt])
+}
+
 model Project {
   id           String        @id @default(cuid())
   name         String
@@ -50,6 +98,7 @@ model Project {
   environments Environment[]
   audits       AuditJob[]
   monitorEvents MonitorEvent[]
+  members      ProjectMember[]
 }
 
 model Environment {
@@ -96,7 +145,6 @@ model AuditCheck {
   auditJob   AuditJob    @relation(fields: [auditJobId], references: [id], onDelete: Cascade)
   @@index([auditJobId])
 }
-
 
 model MonitorEvent {
   id        String   @id @default(cuid())
