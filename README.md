@@ -49,8 +49,8 @@
 - [ ] Подключены GitHub и Cloudflare.
 - [ ] Реализованы очереди, фоновые аудиты и хранение артефактов.
 - [x] Настроен CI для проверки структуры, зависимостей, typecheck и build.
-- [ ] Добавлены автоматические unit/integration/e2e тесты.
-- [ ] Проведён runtime smoke test с PostgreSQL и Redis.
+- [ ] Добавлены автоматические unit/integration/e2e тесты (пока выполнен smoke test запуска сервисов).
+- [x] Runtime smoke test: API, PostgreSQL, Redis и Worker запущены совместно; health и projects endpoints ответили успешно (CI run `43721048059`).
 - [ ] Подготовлено production-развёртывание.
 
 ## Принципы безопасности
