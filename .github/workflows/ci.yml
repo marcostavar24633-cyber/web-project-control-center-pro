@@ -23,24 +23,39 @@ permissions:
 
 jobs:
   validate:
-    if: ${{ hashFiles('package.json', 'pnpm-workspace.yaml') != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Check workspace presence
+        id: workspace
+        shell: bash
+        run: |
+          if [[ -f package.json && -f pnpm-workspace.yaml ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Workspace source is not imported yet; validation is skipped."
+          fi
       - name: Setup Node.js
+        if: steps.workspace.outputs.exists == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Setup pnpm
+        if: steps.workspace.outputs.exists == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 10
       - name: Install dependencies
+        if: steps.workspace.outputs.exists == 'true'
         run: pnpm install --no-frozen-lockfile
       - name: Generate Prisma client
+        if: steps.workspace.outputs.exists == 'true'
         run: pnpm db:generate
       - name: Typecheck
+        if: steps.workspace.outputs.exists == 'true'
         run: pnpm typecheck
       - name: Build
+        if: steps.workspace.outputs.exists == 'true'
         run: pnpm build
