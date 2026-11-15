@@ -49,3 +49,9 @@ A local TypeScript check was attempted with the globally available compiler, but
 Corepack was then used to request pnpm 10.0.0, but package-manager download failed because the environment could not resolve `registry.npmjs.org` (`EAI_AGAIN`). Consequently, dependency installation and the full build could not be run in this environment.
 
 The source archive itself passed ZIP integrity validation. This confirms archive integrity only, not application correctness.
+
+## Additional source syntax check — 2026-11-15
+
+All 16 TypeScript/TSX source files in the prepared archive were parsed with the TypeScript transpiler (`transpileModule`). No syntax diagnostics were reported. This is a syntax-only check: it does not resolve dependencies, validate types, generate Prisma Client, or prove that any package builds.
+
+The transfer archive excludes generated build output. The CI workflow includes a foundation-file check before full source import; dependency installation, typecheck, Prisma generation, and build remain pending until the complete workspace is pushed to this branch.
