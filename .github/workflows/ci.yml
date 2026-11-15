@@ -47,6 +47,22 @@ jobs:
 
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: control
+          POSTGRES_PASSWORD: control_dev_password
+          POSTGRES_DB: control_center
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U control -d control_center"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://control:control_dev_password@localhost:5432/control_center?schema=public
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,6 +90,9 @@ jobs:
       - name: Generate Prisma client
         if: steps.workspace.outputs.exists == 'true'
         run: pnpm db:generate
+      - name: Apply database migrations to clean PostgreSQL
+        if: steps.workspace.outputs.exists == 'true'
+        run: pnpm --filter @control/database exec prisma migrate deploy
       - name: Typecheck
         if: steps.workspace.outputs.exists == 'true'
         run: pnpm typecheck
