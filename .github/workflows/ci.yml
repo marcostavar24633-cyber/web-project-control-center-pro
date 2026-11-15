@@ -8,6 +8,8 @@ on:
       - 'pnpm-workspace.yaml'
       - 'apps/**'
       - 'packages/**'
+      - 'docs/**'
+      - 'README.md'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
@@ -16,12 +18,33 @@ on:
       - 'pnpm-workspace.yaml'
       - 'apps/**'
       - 'packages/**'
+      - 'docs/**'
+      - 'README.md'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  repository-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify foundation files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f docs/ARCHITECTURE.md
+          test -f docs/ROADMAP.md
+          test -f docs/SECURITY.md
+          test -f docs/MVP-1.0.0-AUDIT.md
+          test -f docs/TRANSFER-NOTES.md
+          test -f apps/api/src/audits.controller.ts
+          test -f .github/workflows/ci.yml
+          echo "Foundation repository files are present."
+
   validate:
     runs-on: ubuntu-latest
     steps:
@@ -35,7 +58,7 @@ jobs:
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "Workspace source is not imported yet; validation is skipped."
+            echo "Workspace source is not imported yet; full validation is skipped."
           fi
       - name: Setup Node.js
         if: steps.workspace.outputs.exists == 'true'
