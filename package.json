@@ -1,0 +1,16 @@
+{
+  "name": "web-project-control-center",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @control/web --filter @control/api --filter @control/worker dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @control/database prisma:generate",
+    "db:migrate": "pnpm --filter @control/database prisma:migrate"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

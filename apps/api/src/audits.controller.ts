@@ -1,12 +1,4 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Post,
-  Res,
-} from "@nestjs/common";
+import { Controller, Get, NotFoundException, Param, Post, Res, BadRequestException } from "@nestjs/common";
 import type { Response } from "express";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
@@ -28,9 +20,7 @@ export class AuditsController {
     });
     if (!project) throw new NotFoundException("Проект не найден");
     const environment = project.environments[0];
-    if (!environment) {
-      throw new NotFoundException("У проекта нет production-окружения");
-    }
+    if (!environment) throw new NotFoundException("У проекта нет production-окружения");
 
     const audit = await this.prisma.auditJob.create({
       data: {
@@ -41,22 +31,14 @@ export class AuditsController {
       },
     });
     await this.queue.enqueue({ auditId: audit.id, url: environment.url });
-    return {
-      auditId: audit.id,
-      status: audit.status,
-      message: "Проверка поставлена в очередь",
-    };
+    return { auditId: audit.id, status: audit.status, message: "Проверка поставлена в очередь" };
   }
 
   @Get("audits/:auditId")
   async getAudit(@Param("auditId") auditId: string) {
     const audit = await this.prisma.auditJob.findUnique({
       where: { id: auditId },
-      include: {
-        project: true,
-        environment: true,
-        checks: { orderBy: { checkedAt: "asc" } },
-      },
+      include: { project: true, environment: true, checks: { orderBy: { checkedAt: "asc" } } },
     });
     if (!audit) throw new NotFoundException("Аудит не найден");
     return audit;
@@ -73,31 +55,19 @@ export class AuditsController {
   }
 
   private artifactRoot() {
-    return (
-      process.env.AUDIT_ARTIFACTS_DIR ||
-      path.resolve(process.cwd(), "../worker/artifacts")
-    );
+    return process.env.AUDIT_ARTIFACTS_DIR || path.resolve(process.cwd(), "../worker/artifacts");
   }
 
   @Get("audits/:auditId/artifacts")
   async listArtifacts(@Param("auditId") auditId: string) {
-    const audit = await this.prisma.auditJob.findUnique({
-      where: { id: auditId },
-      select: { id: true },
-    });
+    const audit = await this.prisma.auditJob.findUnique({ where: { id: auditId }, select: { id: true } });
     if (!audit) throw new NotFoundException("Аудит не найден");
-
     const directory = path.resolve(this.artifactRoot(), auditId);
     try {
       const files = await fs.readdir(directory, { withFileTypes: true });
       const artifacts = [];
       for (const entry of files) {
-        if (
-          !entry.isFile() ||
-          !/^(viewport-(390|1440)|diff-390)\.png$/.test(entry.name)
-        ) {
-          continue;
-        }
+        if (!entry.isFile() || !/^(viewport-(390|1440)|diff-390)\.png$/.test(entry.name)) continue;
         const stat = await fs.stat(path.join(directory, entry.name));
         artifacts.push({
           name: entry.name,
@@ -121,13 +91,8 @@ export class AuditsController {
     if (!/^(viewport-(390|1440)|diff-390)\.png$/.test(filename)) {
       throw new BadRequestException("Недопустимое имя файла");
     }
-
-    const audit = await this.prisma.auditJob.findUnique({
-      where: { id: auditId },
-      select: { id: true },
-    });
+    const audit = await this.prisma.auditJob.findUnique({ where: { id: auditId }, select: { id: true } });
     if (!audit) throw new NotFoundException("Аудит не найден");
-
     const filePath = path.resolve(this.artifactRoot(), auditId, filename);
     try {
       const bytes = await fs.readFile(filePath);
@@ -137,5 +102,5 @@ export class AuditsController {
     } catch {
       throw new NotFoundException("Артефакт не найден");
     }
-  }
+ }
 }
