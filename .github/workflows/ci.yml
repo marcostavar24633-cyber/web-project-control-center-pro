@@ -68,8 +68,6 @@ jobs:
       - name: Setup pnpm
         if: steps.workspace.outputs.exists == 'true'
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Install dependencies
         if: steps.workspace.outputs.exists == 'true'
         run: pnpm install --no-frozen-lockfile
